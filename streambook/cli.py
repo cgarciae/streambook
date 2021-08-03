@@ -1,7 +1,9 @@
+import enum
+import os
 import subprocess
 import time
 from pathlib import Path
-import os
+import typing as tp
 
 import in_place
 import typer
@@ -11,6 +13,11 @@ from watchdog.observers import Observer
 from streambook.gen import Generator
 
 app = typer.Typer()
+
+
+class Format(str, enum.Enum):
+    notebook = "notebook"
+    markdown = "markdown"
 
 
 class MyHandler(FileSystemEventHandler):
@@ -96,7 +103,8 @@ def main(
             print()
             print("Starting Streamlit")
             subprocess.run(
-                view_command, capture_output=True,
+                view_command,
+                capture_output=True,
             )
 
         try:
@@ -106,27 +114,30 @@ def main(
             observer.stop()
         observer.join()
 
-import enum
-
-class Formats(str, enum.Enum):
-    notebook = "notebook"
-    markdown = "markdown"
 
 @app.command()
-def convert(file: Path = typer.Argument(..., help="file to convert"), to: Formats = typer.Option(Formats.notebook, help=f"""
-    The destination format, options: {{{", ".join(Formats)}}}.
-    More info: https://jupytext.readthedocs.io/en/latest/formats.html
-""")):
+def convert(
+    file: Path = typer.Argument(..., help="file to convert"),
+    to: Format = typer.Option(
+        Format.notebook,
+        help=f"Output formats: {{{', '.join(Format)}}}.",
+    ),
+    output: tp.Optional[Path] = typer.Option(
+        None, help="output path, if not given it will be infered"
+    ),
+):
+    # run export to create '*.notebook.py' file.
+    export(file, quiet=True)
+
     abs_path, directory, stream_file, notebook_file, ipynb_file = file_paths(file)
-    
-    if to == Formats.markdown:
+
+    if output is not None:
+        ipynb_file = output
+    elif to == Format.markdown:
         ipynb_file = ipynb_file.replace(".ipynb", ".md")
 
-
-    print(ipynb_file)
-
     command = f"jupytext --to {to} --execute {notebook_file} -o {ipynb_file}"
-    os.system(command) 
+    os.system(command)
 
 
 @app.command()
