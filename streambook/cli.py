@@ -106,12 +106,27 @@ def main(
             observer.stop()
         observer.join()
 
+import enum
+
+class Formats(str, enum.Enum):
+    notebook = "notebook"
+    markdown = "markdown"
 
 @app.command()
-def convert(file: Path = typer.Argument(..., help="file to convert")):
+def convert(file: Path = typer.Argument(..., help="file to convert"), to: Formats = typer.Option(Formats.notebook, help=f"""
+    The destination format, options: {{{", ".join(Formats)}}}.
+    More info: https://jupytext.readthedocs.io/en/latest/formats.html
+""")):
     abs_path, directory, stream_file, notebook_file, ipynb_file = file_paths(file)
-    command = f"jupytext --to notebook --execute {notebook_file} -o {ipynb_file} "
-    os.system(command)
+    
+    if to == Formats.markdown:
+        ipynb_file = ipynb_file.replace(".ipynb", ".md")
+
+
+    print(ipynb_file)
+
+    command = f"jupytext --to {to} --execute {notebook_file} -o {ipynb_file}"
+    os.system(command) 
 
 
 @app.command()
